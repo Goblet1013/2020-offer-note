@@ -1,0 +1,13 @@
+1.5种创建对象的方式：
+--new关键字
+--反射的class类的newInstance
+--反射的constructor的newInstance
+--clone
+--反序列化
+
+2.jvm调优参数
+-Xms4G 启动时堆初始化大小
+-Xmx4G 堆最大值
+(设置Xms和Xmx相同，可以避免垃圾回收后JVM重新分配内存，导致应用停顿，耗费资源）
+-Xmn2G 年轻代空间大小，剩余的是老年代
+-XX:SurvivorRatio=8 两个survivor区与Eden区的大小比例为1:1:8

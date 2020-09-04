@@ -1,0 +1,98 @@
+索引：帮助MySQL高效获取数据的数据结构
+索引存储：索引也很大，不可能全部存在内存中，以索引文件形式存储在磁盘上
+数据结构：b+树
+优点：大大提高了查询效率
+缺点：降低了表的更新速度，改数据时也会更改索引信息；索引需要逐步优化，变更业务等需要重新建立索引
+
+分类：
+--单值索引：一个索引只包含一个列，一个表可以有多个单列索引
+--唯一索引：索引列的值必须唯一，但允许有空值
+--复合索引：一个索引包含多个列
+
+索引结构：
+--btree
+--hash
+--full-text
+--r-tree
+
+不适合建索引：
+--表记录太少
+--经常增删改的表（提高查询效率，但是降低了更新效率，因为更改数据同时要更改索引）
+--数据重复且分布平均的表字段（对性别，国籍等字段建立索引没有实际效果）
+
+
+explain：
+--id,select_type,table,type,possible_keys,key,key_len,ref,rows
+
+--id
+--id相同时，执行顺序由上到下
+--id不同时，如果是子查询，id会递增，id越大的优先级越高，越先被执行
+--id相同、不同，同时存在：先执行优先级最高的，id相同时顺序执行
+
+
+--select_type
+--simple 简单的select查询，不包含子查询或UNION
+--primary 包含子查询，最外层查询被标记为primary
+--subquery select或where中包含了子查询
+--derived 在from中包含的子查询被标记为derived，MySQL会递归执行这些子查询，把结果放在临时表里
+--union 第二个select出现在union之后，则被标记为union；若union包含在from子句的子查询，外层select被标记为derived
+--union result  union合并的结果集
+
+
+--table表名
+
+
+--type
+system > const > eq_ref > ref > range > index > all
+system表只有一行记录（等于系统表）
+const查找主键索引
+eq_ref查找唯一性索引
+ref查找非唯一性索引
+range只检索给定范围的行，在where中使用< > between and进行范围指定
+index查找所有索引树，比all快，因为索引文件比数据文件更小
+all不使用任何索引，进行全表扫描，性能最差
+
+
+--possible_keys
+可能被用到的索引有哪些，但不一定被查询使用
+
+
+--keys
+实际使用的索引，如果为null，则没有使用索引
+查询中若出现了覆盖索引，则该索引仅出现在key列表中
+
+
+--key_len
+使用的key的长度，相同查询结果，越小越好，select * from table where idcard = 123 and id = 4
+									 select * from table where idcard = 123 二者查询结果相同，应使用下面key_len短的语句
+
+
+--ref
+显示索引的哪一列被使用了，也可能是一个常数。哪些列或者常量被用于查找索引列的值
+
+
+--rows大致估算找到所需记录需要读取的行数
+
+
+1.innodb和myisam的区别
+
+1）区别一览
+innodb           myisam
+行级锁		     表级锁
+支持事务         不支持事务
+支持外键         不支持外键
+5.6之前不支持全文索引   支持全文索引
+有待考证/*聚簇索引         非聚簇索引*/
+不保存具体行数   保存具体行数
+不允许无主键（默认生成主键） 允许无主键
+
+2）innodb行级锁也不绝对，若执行sql语句时MySQL不能确定扫描范围，innodb会锁全表，例如：
+update table set num=1 where name like "a%";
+
+3）应用场景
+如果涉及大量select，myisam更适合
+如果涉及大量update，insert应用innodb
+高并发，需要事务使用innodb
+
+2.select * from table where a=1 and b=1 and c=1
+abc均为联合索引，如何调优
